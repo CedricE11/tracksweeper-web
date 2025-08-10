@@ -309,52 +309,40 @@ const UserPage = () => {
                 onChange={(e) => setItem({ ...item, poiLayer: e.target.value })}
                 label={t('mapPoiLayer')}
               />
-              <FormControl>
-                <InputLabel>{t('reportsVisible')}</InputLabel>
-                <Select
-                  label={t('reportsVisible')}
-                  value={(item.attributes && item.attributes.visibleReports !== undefined) ? (item.attributes.visibleReports === '' || item.attributes.visibleReports === 'none' ? ['none'] : item.attributes.visibleReports.split(',')) : ['combined', 'events', 'geofences', 'trips', 'stops', 'summary', 'chart', 'replay', 'route', 'logs', 'scheduled', 'statistics']}
-                  onChange={(e) => {
-                    const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                    let newValue;
-                    
-                    if (value.includes('none')) {
-                      // If "None" is selected, clear everything else
-                      newValue = 'none';
-                    } else if (value.length === 0) {
-                      // If nothing selected, set to "none"
-                      newValue = 'none';
-                    } else {
-                      // Remove "none" if other items are selected
-                      const filteredValue = value.filter(v => v !== 'none');
-                      newValue = filteredValue.join(',');
-                    }
-                    
-                    setItem({ ...item, attributes: { ...item.attributes, visibleReports: newValue } });
-                  }}
-                  multiple
-                  renderValue={(selected) => {
-                    if (selected.includes('none') || selected.length === 0) {
-                      return t('sharedDisabled');
-                    }
-                    return `${selected.length} ${t('reportTitle')}`;
-                  }}
-                >
-                  <MenuItem value="none">{t('sharedDisabled')}</MenuItem>
-                  <MenuItem value="combined">{t('reportCombined')}</MenuItem>
-                  <MenuItem value="events">{t('reportEvents')}</MenuItem>
-                  <MenuItem value="geofences">{t('sharedGeofences')}</MenuItem>
-                  <MenuItem value="trips">{t('reportTrips')}</MenuItem>
-                  <MenuItem value="stops">{t('reportStops')}</MenuItem>
-                  <MenuItem value="summary">{t('reportSummary')}</MenuItem>
-                  <MenuItem value="chart">{t('reportChart')}</MenuItem>
-                  <MenuItem value="replay">{t('reportReplay')}</MenuItem>
-                  <MenuItem value="route">{t('reportPositions')}</MenuItem>
-                  <MenuItem value="logs">{t('sharedLogs')}</MenuItem>
-                  <MenuItem value="scheduled">{t('reportScheduled')}</MenuItem>
-                  <MenuItem value="statistics">{t('statisticsTitle')}</MenuItem>
-                </Select>
-              </FormControl>
+              {!item.disableReports && (
+                <FormControl>
+                  <InputLabel>{t('reportsVisible')}</InputLabel>
+                  <Select
+                    label={t('reportsVisible')}
+                    value={(item.attributes && item.attributes.visibleReports !== undefined) ? (item.attributes.visibleReports === '' || item.attributes.visibleReports === 'none' ? [] : item.attributes.visibleReports.split(',')) : ['combined', 'events', 'geofences', 'trips', 'stops', 'summary', 'chart', 'replay', 'route', 'logs', 'scheduled', 'statistics']}
+                    onChange={(e) => {
+                      const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                      const newValue = value.length === 0 ? 'none' : value.join(',');
+                      setItem({ ...item, attributes: { ...item.attributes, visibleReports: newValue } });
+                    }}
+                    multiple
+                    renderValue={(selected) => {
+                      if (selected.length === 0) {
+                        return t('userDisableReports');
+                      }
+                      return `${selected.length} ${t('reportTitle')}`;
+                    }}
+                  >
+                    <MenuItem value="combined">{t('reportCombined')}</MenuItem>
+                    <MenuItem value="events">{t('reportEvents')}</MenuItem>
+                    <MenuItem value="geofences">{t('sharedGeofences')}</MenuItem>
+                    <MenuItem value="trips">{t('reportTrips')}</MenuItem>
+                    <MenuItem value="stops">{t('reportStops')}</MenuItem>
+                    <MenuItem value="summary">{t('reportSummary')}</MenuItem>
+                    <MenuItem value="chart">{t('reportChart')}</MenuItem>
+                    <MenuItem value="replay">{t('reportReplay')}</MenuItem>
+                    <MenuItem value="route">{t('reportPositions')}</MenuItem>
+                    <MenuItem value="logs">{t('sharedLogs')}</MenuItem>
+                    <MenuItem value="scheduled">{t('reportScheduled')}</MenuItem>
+                    <MenuItem value="statistics">{t('statisticsTitle')}</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
             </AccordionDetails>
           </Accordion>
           <Accordion>
