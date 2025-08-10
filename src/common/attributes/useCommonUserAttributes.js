@@ -159,6 +159,10 @@ export default (t) =>
         name: t('attributeNavigationAppTitle'),
         type: 'string',
       },
+      visibleReports: {
+        name: t('reportsVisible'),
+        type: 'string',
+      },
     }),
     [t],
   );

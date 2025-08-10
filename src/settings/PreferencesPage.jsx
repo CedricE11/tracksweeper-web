@@ -360,6 +360,7 @@ const PreferencesPage = () => {
             </Accordion>
           </>
         )}
+
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle1">{t('userToken')}</Typography>

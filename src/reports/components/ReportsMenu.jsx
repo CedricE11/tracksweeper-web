@@ -13,9 +13,18 @@ import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import NotesIcon from '@mui/icons-material/Notes';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import { useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAdministrator, useRestriction } from '../../common/util/permissions';
 import MenuItem from '../../common/components/MenuItem';
+
+// Stable identifiers persisted in user.attributes.visibleReports.
+// Must match the values offered in the PreferencesPage / UserPage settings.
+const ALL_REPORTS = [
+  'combined', 'events', 'geofences', 'trips', 'stops',
+  'summary', 'chart', 'replay', 'route',
+  'logs', 'scheduled', 'statistics',
+];
 
 const ReportsMenu = () => {
   const t = useTranslation();
@@ -23,6 +32,20 @@ const ReportsMenu = () => {
 
   const admin = useAdministrator();
   const readonly = useRestriction('readonly');
+
+  const user = useSelector((state) => state.session.user);
+  const raw = user?.attributes?.visibleReports;
+  const visibleReports = (() => {
+    if (raw === undefined || raw === null) return ALL_REPORTS;
+    if (raw === '' || raw === 'none') return [];
+    return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+  })();
+
+  // If the user has explicitly hidden every report, render nothing
+  // (preserves the "deselect all" UX from the original sweeper customization).
+  if (visibleReports.length === 0) {
+    return null;
+  }
 
   const buildLink = (path) => {
     const sourceParams = new URLSearchParams(location.search);
@@ -48,65 +71,85 @@ const ReportsMenu = () => {
   return (
     <>
       <List>
-        <MenuItem
-          title={t('reportCombined')}
-          link={buildLink('/reports/combined')}
-          icon={<StarIcon />}
-          selected={location.pathname === '/reports/combined'}
-        />
-        <MenuItem
-          title={t('reportEvents')}
-          link={buildLink('/reports/events')}
-          icon={<NotificationsActiveIcon />}
-          selected={location.pathname === '/reports/events'}
-        />
-        <MenuItem
-          title={t('sharedGeofences')}
-          link={buildLink('/reports/geofences')}
-          icon={<PlaceIcon />}
-          selected={location.pathname === '/reports/geofences'}
-        />
-        <MenuItem
-          title={t('reportTrips')}
-          link={buildLink('/reports/trips')}
-          icon={<PlayCircleFilledIcon />}
-          selected={location.pathname === '/reports/trips'}
-        />
-        <MenuItem
-          title={t('reportStops')}
-          link={buildLink('/reports/stops')}
-          icon={<PauseCircleFilledIcon />}
-          selected={location.pathname === '/reports/stops'}
-        />
-        <MenuItem
-          title={t('reportSummary')}
-          link={buildLink('/reports/summary')}
-          icon={<FormatListBulletedIcon />}
-          selected={location.pathname === '/reports/summary'}
-        />
-        <MenuItem
-          title={t('reportChart')}
-          link={buildLink('/reports/chart')}
-          icon={<TrendingUpIcon />}
-          selected={location.pathname === '/reports/chart'}
-        />
-        <MenuItem title={t('reportReplay')} link={buildLink('/replay')} icon={<RouteIcon />} />
-        <MenuItem
-          title={t('reportPositions')}
-          link={buildLink('/reports/route')}
-          icon={<TimelineIcon />}
-          selected={location.pathname === '/reports/route'}
-        />
+        {visibleReports.includes('combined') && (
+          <MenuItem
+            title={t('reportCombined')}
+            link={buildLink('/reports/combined')}
+            icon={<StarIcon />}
+            selected={location.pathname === '/reports/combined'}
+          />
+        )}
+        {visibleReports.includes('events') && (
+          <MenuItem
+            title={t('reportEvents')}
+            link={buildLink('/reports/events')}
+            icon={<NotificationsActiveIcon />}
+            selected={location.pathname === '/reports/events'}
+          />
+        )}
+        {visibleReports.includes('geofences') && (
+          <MenuItem
+            title={t('sharedGeofences')}
+            link={buildLink('/reports/geofences')}
+            icon={<PlaceIcon />}
+            selected={location.pathname === '/reports/geofences'}
+          />
+        )}
+        {visibleReports.includes('trips') && (
+          <MenuItem
+            title={t('reportTrips')}
+            link={buildLink('/reports/trips')}
+            icon={<PlayCircleFilledIcon />}
+            selected={location.pathname === '/reports/trips'}
+          />
+        )}
+        {visibleReports.includes('stops') && (
+          <MenuItem
+            title={t('reportStops')}
+            link={buildLink('/reports/stops')}
+            icon={<PauseCircleFilledIcon />}
+            selected={location.pathname === '/reports/stops'}
+          />
+        )}
+        {visibleReports.includes('summary') && (
+          <MenuItem
+            title={t('reportSummary')}
+            link={buildLink('/reports/summary')}
+            icon={<FormatListBulletedIcon />}
+            selected={location.pathname === '/reports/summary'}
+          />
+        )}
+        {visibleReports.includes('chart') && (
+          <MenuItem
+            title={t('reportChart')}
+            link={buildLink('/reports/chart')}
+            icon={<TrendingUpIcon />}
+            selected={location.pathname === '/reports/chart'}
+          />
+        )}
+        {visibleReports.includes('replay') && (
+          <MenuItem title={t('reportReplay')} link={buildLink('/replay')} icon={<RouteIcon />} />
+        )}
+        {visibleReports.includes('route') && (
+          <MenuItem
+            title={t('reportPositions')}
+            link={buildLink('/reports/route')}
+            icon={<TimelineIcon />}
+            selected={location.pathname === '/reports/route'}
+          />
+        )}
       </List>
       <Divider />
       <List>
-        <MenuItem
-          title={t('sharedLogs')}
-          link="/reports/logs"
-          icon={<NotesIcon />}
-          selected={location.pathname === '/reports/logs'}
-        />
-        {!readonly && (
+        {visibleReports.includes('logs') && (
+          <MenuItem
+            title={t('sharedLogs')}
+            link="/reports/logs"
+            icon={<NotesIcon />}
+            selected={location.pathname === '/reports/logs'}
+          />
+        )}
+        {!readonly && visibleReports.includes('scheduled') && (
           <MenuItem
             title={t('reportScheduled')}
             link="/reports/scheduled"
@@ -114,7 +157,7 @@ const ReportsMenu = () => {
             selected={location.pathname === '/reports/scheduled'}
           />
         )}
-        {admin && (
+        {admin && visibleReports.includes('statistics') && (
           <MenuItem
             title={t('statisticsTitle')}
             link="/reports/statistics"
