@@ -257,6 +257,7 @@
     "settingsUpdateAvailable": "Une mise à jour est disponible",
     "settingsSupport": "Support",
     "reportTitle": "Rapports",
+    "reportsVisible": "Rapports visibles",
     "reportScheduled": "Rapports programmés",
     "reportDevice": "Appareil",
     "reportGroup": "Groupe",
@@ -629,5 +630,9 @@
     "categoryVan": "Van",
     "categoryScooter": "Scooter",
     "maintenanceStart": "Départ",
-    "maintenancePeriod": "Période"
+    "maintenancePeriod": "Période",
+    "tripTotalDistance": "Distance totale",
+    "tripTotalDuration": "Durée totale",
+    "tripAverageSpeed": "Vitesse moyenne",
+    "tripSpeedScale": "Échelle de vitesse (km/h)"
 }

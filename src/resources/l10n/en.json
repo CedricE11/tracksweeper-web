@@ -630,5 +630,9 @@
     "categoryVan": "Van",
     "categoryScooter": "Scooter",
     "maintenanceStart": "Start",
-    "maintenancePeriod": "Period"
+    "maintenancePeriod": "Period",
+    "tripTotalDistance": "Total distance",
+    "tripTotalDuration": "Total duration",
+    "tripAverageSpeed": "Average speed",
+    "tripSpeedScale": "Speed scale"
 }

@@ -257,6 +257,7 @@
     "settingsUpdateAvailable": "Hay una actualización disponible.",
     "settingsSupport": "Soporte",
     "reportTitle": "Reportes",
+    "reportsVisible": "Reportes Visibles",
     "reportScheduled": "Reportes Programados",
     "reportDevice": "Dispositivos",
     "reportGroup": "Grupo",
@@ -629,5 +630,9 @@
     "categoryVan": "Furgoneta",
     "categoryScooter": "Moto",
     "maintenanceStart": "Iniciar",
-    "maintenancePeriod": "Período"
+    "maintenancePeriod": "Período",
+    "tripTotalDistance": "Distancia total",
+    "tripTotalDuration": "Duración total",
+    "tripAverageSpeed": "Velocidad media",
+    "tripSpeedScale": "Escala de velocidad (km/h)"
 }

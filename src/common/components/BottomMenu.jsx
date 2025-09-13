@@ -22,6 +22,50 @@ import { useTranslation } from './LocalizationProvider';
 import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
 
+// Helper function to get the first available report route
+const getFirstAvailableReportRoute = (user) => {
+  // Wait for user data to be loaded
+  if (!user) {
+    return '/reports/combined';
+  }
+  
+  const raw = user.attributes?.visibleReports;
+  const visibleReports = (() => {
+    if (raw === undefined || raw === null) return ['combined', 'events', 'geofences', 'trips', 'stops', 'summary', 'chart', 'replay', 'route', 'logs', 'scheduled', 'statistics'];
+    if (raw === '' || raw === 'none') return [];
+    return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+  })();
+
+  // Map report keys to v6.12 route paths.
+  const reportRoutes = {
+    combined: '/reports/combined',
+    events: '/reports/events',
+    geofences: '/reports/geofences',
+    trips: '/reports/trips',
+    stops: '/reports/stops',
+    summary: '/reports/summary',
+    chart: '/reports/chart',
+    replay: '/replay',
+    route: '/reports/route',
+    logs: '/reports/logs',
+    scheduled: '/reports/scheduled',
+    statistics: '/reports/statistics',
+  };
+
+  // Priority order for picking the landing report.
+  const reportPriority = ['combined', 'events', 'geofences', 'trips', 'stops', 'summary', 'chart', 'replay', 'route', 'logs', 'scheduled', 'statistics'];
+
+  // Find the first available report based on priority order
+  if (visibleReports.length > 0) {
+    const firstAvailableReport = reportPriority.find(report => visibleReports.includes(report));
+    if (firstAvailableReport) {
+      return reportRoutes[firstAvailableReport] || '/reports/combined';
+    }
+  }
+
+  return '/reports/combined'; // fallback
+};
+
 const BottomMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -100,15 +144,11 @@ const BottomMenu = () => {
         if (id == null) {
           const deviceIds = Object.keys(devices);
           if (deviceIds.length === 1) {
-            id = deviceIds[0];
+            [id] = deviceIds;
           }
         }
-
-        if (id != null) {
-          navigate(`/reports/combined?deviceId=${id}`);
-        } else {
-          navigate('/reports/combined');
-        }
+        const target = getFirstAvailableReportRoute(user);
+        navigate(id != null ? `${target}${target.includes('?') ? '&' : '?'}deviceId=${id}` : target);
         break;
       }
       case 'settings':

@@ -1,5 +1,5 @@
-import { Route, Routes, useSearchParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import MainPage from './main/MainPage';
 import CombinedReportPage from './reports/CombinedReportPage';
 import PositionsReportPage from './reports/PositionsReportPage';
@@ -59,6 +59,55 @@ import { generateLoginToken } from './common/components/NativeInterface';
 import { useLocalization } from './common/components/LocalizationProvider';
 import fetchOrThrow from './common/util/fetchOrThrow';
 import AuditPage from './reports/AuditPage';
+
+const ReportsRedirect = () => {
+  const navigate = useNavigate();
+  const user = useSelector((state) => state.session.user);
+  
+  // Wait for user data to be loaded
+  if (!user) {
+    return <Loader />;
+  }
+  
+  const raw = user.attributes?.visibleReports;
+  const visibleReports = (() => {
+    if (raw === undefined || raw === null) return ['combined', 'events', 'geofences', 'trips', 'stops', 'summary', 'chart', 'replay', 'route', 'logs', 'scheduled', 'statistics'];
+    if (raw === '' || raw === 'none') return [];
+    return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+  })();
+
+  // Map report keys to v6.12 route paths.
+  const reportRoutes = {
+    combined: '/reports/combined',
+    events: '/reports/events',
+    geofences: '/reports/geofences',
+    trips: '/reports/trips',
+    stops: '/reports/stops',
+    summary: '/reports/summary',
+    chart: '/reports/chart',
+    replay: '/replay',
+    route: '/reports/route',
+    logs: '/reports/logs',
+    scheduled: '/reports/scheduled',
+    statistics: '/reports/statistics',
+  };
+
+  // Priority order for picking the landing report.
+  const reportPriority = ['combined', 'events', 'geofences', 'trips', 'stops', 'summary', 'chart', 'replay', 'route', 'logs', 'scheduled', 'statistics'];
+
+  // Find the first available report based on priority order
+  if (visibleReports.length > 0) {
+    const firstAvailableReport = reportPriority.find(report => visibleReports.includes(report));
+    if (firstAvailableReport) {
+      const route = reportRoutes[firstAvailableReport];
+      if (route) {
+        navigate(route, { replace: true });
+      }
+    }
+  }
+
+  return <Loader />;
+};
 
 const Navigation = () => {
   const dispatch = useDispatch();
@@ -169,6 +218,7 @@ const Navigation = () => {
         </Route>
 
         <Route path="reports">
+          <Route index element={<ReportsRedirect />} />
           <Route path="combined" element={<CombinedReportPage />} />
           <Route path="chart" element={<ChartReportPage />} />
           <Route path="events" element={<EventReportPage />} />
