@@ -44,16 +44,19 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
     () => Object.values(groups).sort((a, b) => a.name.localeCompare(b.name)),
     [groups],
   );
+  const reportsState = useSelector((state) => state.reports);
 
   const deviceIds = useMemo(() => searchParams.getAll('deviceId').map(Number), [searchParams]);
   const groupIds = useMemo(() => searchParams.getAll('groupId').map(Number), [searchParams]);
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-  const [period, setPeriod] = useState('today');
+  const [period, setPeriod] = useState(reportsState?.period || 'today');
   const [customFrom, setCustomFrom] = useState(
-    dayjs().subtract(1, 'hour').locale('en').format('YYYY-MM-DDTHH:mm'),
+    reportsState?.from || dayjs().subtract(1, 'hour').locale('en').format('YYYY-MM-DDTHH:mm'),
   );
-  const [customTo, setCustomTo] = useState(dayjs().locale('en').format('YYYY-MM-DDTHH:mm'));
+  const [customTo, setCustomTo] = useState(
+    reportsState?.to || dayjs().locale('en').format('YYYY-MM-DDTHH:mm'),
+  );
   const [selectedOption, setSelectedOption] = useState('json');
 
   const [description, setDescription] = useState();
