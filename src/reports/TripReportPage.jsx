@@ -1,8 +1,8 @@
 import {
   useState, Fragment, useEffect, useRef,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import {
   IconButton, Table, TableBody, TableCell, TableHead, TableRow, Checkbox, Typography, Box,
@@ -21,7 +21,7 @@ import {
 } from '../common/util/formatter';
 import { interpolateTurbo } from '../common/util/colors';
 import { speedFromKnots, speedUnitString } from '../common/util/converter';
-import ReportFilter from './components/ReportFilter';
+import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { useAttributePreference, usePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
@@ -29,6 +29,7 @@ import ReportsMenu from './components/ReportsMenu';
 import ColumnSelect from './components/ColumnSelect';
 import usePersistedState from '../common/util/usePersistedState';
 import { useCatch, useEffectAsync } from '../reactHelper';
+import { devicesActions } from '../store';
 import useReportStyles from './common/useReportStyles';
 import MapView from '../map/core/MapView';
 import MapRoutePath from '../map/MapRoutePath';
@@ -60,11 +61,14 @@ const columnsMap = new Map(columnsArray);
 
 const TripReportPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { classes } = useReportStyles();
   const t = useTranslation();
   const theme = useTheme();
 
   const devices = useSelector((state) => state.devices.items);
+  const selectedDeviceIds = useSelector((state) => state.devices.selectedIds);
   const period = useSelector((state) => state.reports.period);
   const reportFrom = useSelector((state) => state.reports.from);
   const reportTo = useSelector((state) => state.reports.to);
@@ -88,6 +92,31 @@ const TripReportPage = () => {
   const [routes, setRoutes] = useState({});
   const hasAutoSubmitted = useRef(false);
   const lastShowParams = useRef(null);
+
+
+  // Device auto-select: when devices have loaded and there's no deviceId or
+  // groupId in the URL yet, populate the selection with every device the user
+  // has access to. Without this, clicking "Show" with an empty selection
+  // returns no trips on most installations — Traccar's "all devices when none
+  // selected" v6.12 release note refers to the dropdown placeholder, not to
+  // server-side behavior.
+  const hasAutoSelected = useRef(false);
+  useEffect(() => {
+    if (hasAutoSelected.current) return;
+    if (!devices || Object.keys(devices).length === 0) return;
+    const urlDeviceIds = searchParams.getAll('deviceId');
+    const urlGroupIds = searchParams.getAll('groupId');
+    if (urlDeviceIds.length > 0 || urlGroupIds.length > 0) {
+      hasAutoSelected.current = true;
+      return;
+    }
+    const allDeviceIds = Object.keys(devices).map((id) => parseInt(id, 10));
+    if (selectedDeviceIds.length === 0) {
+      dispatch(devicesActions.selectIds(allDeviceIds));
+    }
+    updateReportParams(searchParams, setSearchParams, 'deviceId', allDeviceIds);
+    hasAutoSelected.current = true;
+  }, [devices, selectedDeviceIds, searchParams, setSearchParams, dispatch]);
 
   // Aggregate stats for the selected trips, localized via formatter helpers.
   const totalDistance = selectedItems.reduce((sum, item) => sum + (item.distance || 0), 0);
