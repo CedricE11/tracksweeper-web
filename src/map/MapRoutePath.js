@@ -5,7 +5,7 @@ import { map } from './core/MapView';
 import getSpeedColor from '../common/util/colors';
 import { useAttributePreference } from '../common/util/preferences';
 
-const MapRoutePath = ({ positions }) => {
+const MapRoutePath = ({ positions, color }) => {
   const id = useId();
 
   const theme = useTheme();
@@ -64,31 +64,52 @@ const MapRoutePath = ({ positions }) => {
   }, []);
 
   useEffect(() => {
-    const minSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.min(a, b), Infinity);
-    const maxSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.max(a, b), -Infinity);
-    const features = [];
-    for (let i = 0; i < positions.length - 1; i += 1) {
-      features.push({
+    const fixedColor = color || reportColor;
+    let features;
+    if (fixedColor) {
+      // Single-color path: emit one LineString feature for the whole route.
+      // This is dramatically cheaper than per-segment rendering when many
+      // routes are drawn at once (e.g. trip report with hundreds of trips).
+      features = [{
         type: 'Feature',
         geometry: {
           type: 'LineString',
-          coordinates: [
-            [positions[i].longitude, positions[i].latitude],
-            [positions[i + 1].longitude, positions[i + 1].latitude],
-          ],
+          coordinates: positions.map((p) => [p.longitude, p.latitude]),
         },
         properties: {
-          color: reportColor || getSpeedColor(positions[i + 1].speed, minSpeed, maxSpeed),
+          color: fixedColor,
           width: mapLineWidth,
           opacity: mapLineOpacity,
         },
-      });
+      }];
+    } else {
+      // Speed-colored path: one feature per segment, colored by speed.
+      const minSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.min(a, b), Infinity);
+      const maxSpeed = positions.map((p) => p.speed).reduce((a, b) => Math.max(a, b), -Infinity);
+      features = [];
+      for (let i = 0; i < positions.length - 1; i += 1) {
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [positions[i].longitude, positions[i].latitude],
+              [positions[i + 1].longitude, positions[i + 1].latitude],
+            ],
+          },
+          properties: {
+            color: getSpeedColor(positions[i + 1].speed, minSpeed, maxSpeed),
+            width: mapLineWidth,
+            opacity: mapLineOpacity,
+          },
+        });
+      }
     }
     map.getSource(id)?.setData({
       type: 'FeatureCollection',
       features,
     });
-  }, [theme, positions, reportColor, mapLineWidth, mapLineOpacity]);
+  }, [theme, positions, reportColor, color, mapLineWidth, mapLineOpacity]);
 
   return null;
 };
