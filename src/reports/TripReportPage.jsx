@@ -1,5 +1,5 @@
 import {
-  useState, Fragment, useEffect, useRef,
+  useState, useEffect, useRef,
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -19,23 +19,18 @@ import {
   formatTime,
   formatNumericHours,
 } from '../common/util/formatter';
-import { interpolateTurbo } from '../common/util/colors';
-import { speedFromKnots, speedUnitString } from '../common/util/converter';
 import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { useAttributePreference, usePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import ReportsMenu from './components/ReportsMenu';
-import ColumnSelect from './components/ColumnSelect';
-import usePersistedState from '../common/util/usePersistedState';
 import { useCatch, useEffectAsync } from '../reactHelper';
 import { devicesActions } from '../store';
 import useReportStyles from './common/useReportStyles';
 import MapView from '../map/core/MapView';
-import MapRoutePath from '../map/MapRoutePath';
+import MapMultiRoutePath from '../map/MapMultiRoutePath';
 import AddressValue from '../common/components/AddressValue';
 import TableShimmer from '../common/components/TableShimmer';
-import MapMarkers from '../map/MapMarkers';
 import MapCamera from '../map/MapCamera';
 import MapGeofence from '../map/MapGeofence';
 import scheduleReport from './common/scheduleReport';
@@ -78,12 +73,9 @@ const TripReportPage = () => {
   const volumeUnit = useAttributePreference('volumeUnit');
   const coordinateFormat = usePreference('coordinateFormat');
 
-  const [columns, setColumns] = usePersistedState('tripColumns', [
-    'startTime',
-    'endTime',
-    'distance',
-    'averageSpeed',
-  ]);
+  // Fixed column set for the trip report. The Columns dropdown was removed
+  // intentionally so users can't drift away from these four.
+  const columns = ['startTime', 'endTime', 'distance', 'averageSpeed'];
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   // Multi-trip selection state: array of selected trip rows.
@@ -124,79 +116,52 @@ const TripReportPage = () => {
   const totalAverageSpeed = selectedItems.reduce((sum, item) => sum + (item.averageSpeed || 0), 0);
   const averageSpeed = selectedItems.length > 0 ? totalAverageSpeed / selectedItems.length : 0;
 
-  // Speed-scale legend: derive a 5-stop turbo-color gradient from the actual
-  // speed range present in the visible routes.
-  const allSpeeds = Object.values(routes)
-    .flat()
-    .map((pos) => pos.speed)
-    .filter((speed) => speed != null && speed > 0);
-  const minSpeed = allSpeeds.length > 0 ? Math.min(...allSpeeds) : 0;
-  const maxSpeed = allSpeeds.length > 0 ? Math.max(...allSpeeds) : 0;
-
-  const createSpeedScale = () => {
-    if (minSpeed === 0 && maxSpeed === 0) return [];
-    const scalePoints = 5;
-    const scaleItems = [];
-    for (let i = 0; i < scalePoints; i += 1) {
-      const speed = minSpeed + (maxSpeed - minSpeed) * (i / (scalePoints - 1));
-      const normalized = maxSpeed === minSpeed ? 0 : (speed - minSpeed) / (maxSpeed - minSpeed);
-      const color = interpolateTurbo(normalized);
-      scaleItems.push({ speed, color });
-    }
-    return scaleItems;
-  };
-
-  const speedScaleItems = createSpeedScale();
-
-  // Markers for every selected trip (start + end), so multiple trips show at
-  // once on the map.
-  const createMarkers = () => {
-    const markers = [];
-    selectedItems.forEach((item) => {
-      markers.push(
-        {
-          latitude: item.startLat,
-          longitude: item.startLon,
-          image: 'start-success',
-        },
-        {
-          latitude: item.endLat,
-          longitude: item.endLon,
-          image: 'finish-error',
-        },
-      );
-    });
-    return markers;
-  };
-
   // Fetch a route per selected trip, keyed by deviceId+timestamps so we can
   // cache and avoid re-fetching when the selection set is widened.
+  // Fetches happen in parallel batches (rather than serially) so that selecting
+  // hundreds of trips finishes in seconds instead of minutes.
   useEffectAsync(async () => {
+    const ROUTE_FETCH_BATCH_SIZE = 16;
     const newRoutes = {};
-    /* eslint-disable no-await-in-loop */
-    for (const item of selectedItems) {
+    const toFetch = [];
+    selectedItems.forEach((item) => {
       const routeKey = `${item.deviceId}-${item.startTime}-${item.endTime}`;
       if (routes[routeKey]) {
+        // Reuse cached route from a previous selection.
         newRoutes[routeKey] = routes[routeKey];
       } else {
-        const query = new URLSearchParams({
-          deviceId: item.deviceId,
-          from: item.startTime,
-          to: item.endTime,
-        });
-        try {
-          const response = await fetchOrThrow(`/api/reports/route?${query.toString()}`, {
-            headers: { Accept: 'application/json' },
-          });
-          newRoutes[routeKey] = await response.json();
-        } catch (error) {
-          // Swallow per-trip route failures so a single bad trip doesn't break
-          // the rest of the visualization.
-          newRoutes[routeKey] = [];
-        }
+        toFetch.push({ item, routeKey });
       }
+    });
+
+    /* eslint-disable no-await-in-loop */
+    for (let i = 0; i < toFetch.length; i += ROUTE_FETCH_BATCH_SIZE) {
+      const batch = toFetch.slice(i, i + ROUTE_FETCH_BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async ({ item, routeKey }) => {
+          const query = new URLSearchParams({
+            deviceId: item.deviceId,
+            from: item.startTime,
+            to: item.endTime,
+          });
+          try {
+            const response = await fetchOrThrow(`/api/reports/route?${query.toString()}`, {
+              headers: { Accept: 'application/json' },
+            });
+            return [routeKey, await response.json()];
+          } catch (error) {
+            // Swallow per-trip route failures so a single bad trip doesn't
+            // break the rest of the visualization.
+            return [routeKey, []];
+          }
+        }),
+      );
+      results.forEach(([key, data]) => {
+        newRoutes[key] = data;
+      });
     }
     /* eslint-enable no-await-in-loop */
+
     setRoutes(newRoutes);
   }, [selectedItems]);
 
@@ -374,10 +339,16 @@ const TripReportPage = () => {
           <div className={classes.containerMap}>
             <MapView>
               <MapGeofence />
-              {Object.entries(routes).map(([key, positions]) => (
-                <MapRoutePath key={key} positions={positions} />
-              ))}
-              <MapMarkers markers={createMarkers()} />
+              <MapMultiRoutePath
+                routes={Object.values(routes)}
+                color={
+                  // In dark mode, common track colors clash with map features:
+                  // blue/cyan = waterways, orange = highways, green = parks.
+                  // Magenta/pink isn't a natural map element, so it reads
+                  // unambiguously as user data against any tile background.
+                  theme.palette.mode === 'dark' ? '#ec407a' : theme.palette.primary.main
+                }
+              />
               {Object.values(routes).flat().length > 0 && (
                 <MapCamera positions={Object.values(routes).flat()} />
               )}
@@ -393,9 +364,8 @@ const TripReportPage = () => {
               onSchedule={onSchedule}
               deviceType="multiple"
               loading={loading}
-            >
-              <ColumnSelect columns={columns} setColumns={setColumns} columnsArray={columnsArray} />
-            </ReportFilter>
+              disableGroups
+            />
             {selectedItems.length > 0 && (
               <Box
                 sx={{
@@ -417,33 +387,6 @@ const TripReportPage = () => {
                     {'  |  '}
                     {`${t('tripAverageSpeed')}: ${averageSpeed > 0 ? formatSpeed(averageSpeed, speedUnit, t) : '-'}`}
                   </Typography>
-                  {speedScaleItems.length > 0 && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        {`${t('tripSpeedScale')} (${speedUnitString(speedUnit, t)}):`}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {speedScaleItems.map((item, index) => (
-                          <Fragment key={`${item.speed}-${index}`}>
-                            <Box
-                              sx={{
-                                width: 12,
-                                height: 12,
-                                backgroundColor: `rgb(${item.color[0]}, ${item.color[1]}, ${item.color[2]})`,
-                                borderRadius: 1,
-                              }}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                              {Math.round(speedFromKnots(item.speed, speedUnit))}
-                            </Typography>
-                            {index < speedScaleItems.length - 1 && (
-                              <Typography variant="caption" color="text.secondary">,</Typography>
-                            )}
-                          </Fragment>
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
                 </Box>
               </Box>
             )}

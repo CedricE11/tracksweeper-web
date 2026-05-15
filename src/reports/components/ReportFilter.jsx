@@ -26,7 +26,17 @@ export const updateReportParams = (searchParams, setSearchParams, key, values) =
   setSearchParams(newParams, { replace: true });
 };
 
-const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, loading }) => {
+const ReportFilter = ({
+  children,
+  onShow,
+  onExport,
+  onSchedule,
+  deviceType,
+  loading,
+  disableGroups,
+  wideDevices,
+  showOnNewLine,
+}) => {
   const { classes } = useReportStyles();
   const t = useTranslation();
 
@@ -166,9 +176,12 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
   };
 
   return (
-    <div className={classes.filter}>
+    <div
+      className={classes.filter}
+      style={wideDevices ? { display: 'flex', width: '100%' } : undefined}
+    >
       {deviceType !== 'none' && (
-        <div className={classes.filterItem}>
+        <div className={classes.filterItem} style={wideDevices ? { flexGrow: 2 } : undefined}>
           <SelectField
             label={t(deviceType === 'multiple' ? 'deviceTitle' : 'reportDevice')}
             data={deviceList}
@@ -187,7 +200,7 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
           />
         </div>
       )}
-      {deviceType === 'multiple' && (
+      {!disableGroups && deviceType === 'multiple' && (
         <div className={classes.filterItem}>
           <SelectField
             label={t('settingsGroups')}
@@ -268,6 +281,7 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
         </>
       )}
       {children}
+      {showOnNewLine && <div style={{ flexBasis: '100%', height: 0 }} />}
       <div className={classes.filterItem}>
         {Object.keys(options).length === 1 ? (
           <Button

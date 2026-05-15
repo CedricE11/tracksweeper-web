@@ -7,7 +7,7 @@ export default makeStyles()((theme) => ({
     flexDirection: 'column',
   },
   containerMap: {
-    flexBasis: '40%',
+    flexBasis: '55%',
     flexShrink: 0,
   },
   containerMain: {

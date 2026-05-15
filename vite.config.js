@@ -21,7 +21,15 @@ export default defineConfig(() => ({
     VitePWA({
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
       workbox: {
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [
+          /^\/api/,
+          /^\/view(\/|$)/,
+          // Legacy bare-slug share URLs from before the /view/ prefix existed.
+          // Keep these in the denylist so the service worker lets them through
+          // to nginx, where they're redirected to /reports/trips/?token=...
+          /^\/sunshinecoast(\/|$)/,
+          /^\/bikeloud(\/|$)/,
+        ],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
