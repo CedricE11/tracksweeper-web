@@ -132,7 +132,14 @@ const UserPage = () => {
       endpoint="users"
       item={item}
       setItem={setItem}
-      defaultItem={admin ? { deviceLimit: -1 } : {}}
+      defaultItem={{
+        ...(admin ? { deviceLimit: -1 } : {}),
+        // Tracksweeper default: only show Sweeps, Chart, and Replay in the
+        // reports menu for newly-created users. Keep this list in sync with
+        // RegisterPage.jsx so admin-created and self-registered users get the
+        // same defaults.
+        attributes: { visibleReports: 'trips,chart,replay' },
+      }}
       validate={validate}
       onItemSaved={onItemSaved}
       menu={<SettingsMenu />}

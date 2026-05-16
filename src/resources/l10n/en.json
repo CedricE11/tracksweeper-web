@@ -562,7 +562,7 @@
     "reportCombined": "Combined",
     "reportPositions": "Positions",
     "reportEvents": "Events",
-    "reportTrips": "Trips",
+    "reportTrips": "Sweeps",
     "reportStops": "Stops",
     "reportSummary": "Summary",
     "reportDaily": "Daily Summary",
@@ -635,5 +635,6 @@
     "tripTotalDistance": "Total distance",
     "tripTotalDuration": "Total duration",
     "tripAverageSpeed": "Average speed",
-    "tripSpeedScale": "Speed scale"
+    "tripSpeedScale": "Speed scale",
+    "reportNoSweepsInRange": "No sweeps between {from} and {to}. Try a different date range."
 }

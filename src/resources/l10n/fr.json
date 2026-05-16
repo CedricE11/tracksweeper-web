@@ -562,7 +562,7 @@
     "reportCombined": "Combinés",
     "reportPositions": "Positions",
     "reportEvents": "Évènements",
-    "reportTrips": "Trajets",
+    "reportTrips": "Balayage",
     "reportStops": "Arrêts",
     "reportSummary": "Résumé",
     "reportDaily": "Rapport journalier",
@@ -635,5 +635,6 @@
     "tripTotalDistance": "Distance totale",
     "tripTotalDuration": "Durée totale",
     "tripAverageSpeed": "Vitesse moyenne",
-    "tripSpeedScale": "Échelle de vitesse (km/h)"
+    "tripSpeedScale": "Échelle de vitesse (km/h)",
+    "reportNoSweepsInRange": "Aucun balayage entre {from} et {to}. Essayez une autre plage de dates."
 }

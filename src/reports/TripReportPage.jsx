@@ -82,6 +82,14 @@ const TripReportPage = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   // Map of routeKey -> array of route positions for every selected trip.
   const [routes, setRoutes] = useState({});
+  // Tracks whether a search has completed at least once. Drives the empty-state
+  // message: we only want to say "no trips between X and Y" after the user (or
+  // the auto-show effect) has actually run a query — otherwise the message
+  // would flash on first render before any search has happened.
+  const [hasShown, setHasShown] = useState(false);
+  // From/to of the most recent completed search, used to echo the date range
+  // back to the user in the empty-state message.
+  const [shownRange, setShownRange] = useState(null);
   const hasAutoSubmitted = useRef(false);
   const lastShowParams = useRef(null);
 
@@ -180,6 +188,10 @@ const TripReportPage = () => {
       // Auto-select all returned trips so the map and stats are populated
       // immediately.
       setSelectedItems(trips);
+      // Record that a search completed and which range it covered, so the
+      // empty-state message can echo the dates back to the user.
+      setShownRange({ from, to });
+      setHasShown(true);
     } finally {
       setLoading(false);
     }
@@ -414,53 +426,64 @@ const TripReportPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {!loading ? (
-                items.map((item) => {
-                  const isSelected = selectedItems.some(
-                    (selected) => selected.startPositionId === item.startPositionId,
-                  );
-                  return (
-                    <TableRow key={item.startPositionId} selected={isSelected}>
-                      <TableCell className={classes.columnAction} padding="checkbox">
-                        <div className={classes.columnActionContainer}>
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={(event) => {
-                              if (event.target.checked) {
-                                setSelectedItems([...selectedItems, item]);
-                              } else {
-                                setSelectedItems(
-                                  selectedItems.filter(
-                                    (selected) => selected.startPositionId !== item.startPositionId,
-                                  ),
-                                );
-                              }
-                            }}
-                          />
-                          {isSelected && selectedItems.length === 1 ? (
-                            <IconButton size="small" onClick={() => setSelectedItems([])}>
-                              <GpsFixedIcon fontSize="small" />
-                            </IconButton>
-                          ) : (
-                            <IconButton size="small" onClick={() => setSelectedItems([item])}>
-                              <LocationSearchingIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                          <IconButton size="small" onClick={() => navigateToReplay(item)}>
-                            <RouteIcon fontSize="small" />
-                          </IconButton>
-                        </div>
-                      </TableCell>
-                      <TableCell>{devices[item.deviceId].name}</TableCell>
-                      {columns.map((key) => (
-                        <TableCell key={key}>{formatValue(item, key)}</TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })
-              ) : (
+              {loading && (
                 <TableShimmer columns={columns.length + 2} startAction />
               )}
+              {!loading && hasShown && items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 2} align="center" sx={{ py: 4, border: 0 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {t('reportNoSweepsInRange', {
+                        from: dayjs(shownRange?.from).format('YYYY-MM-DD hh:mm A'),
+                        to: dayjs(shownRange?.to).format('YYYY-MM-DD hh:mm A'),
+                      })}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && items.length > 0 && items.map((item) => {
+                const isSelected = selectedItems.some(
+                  (selected) => selected.startPositionId === item.startPositionId,
+                );
+                return (
+                  <TableRow key={item.startPositionId} selected={isSelected}>
+                    <TableCell className={classes.columnAction} padding="checkbox">
+                      <div className={classes.columnActionContainer}>
+                        <Checkbox
+                          checked={isSelected}
+                          onChange={(event) => {
+                            if (event.target.checked) {
+                              setSelectedItems([...selectedItems, item]);
+                            } else {
+                              setSelectedItems(
+                                selectedItems.filter(
+                                  (selected) => selected.startPositionId !== item.startPositionId,
+                                ),
+                              );
+                            }
+                          }}
+                        />
+                        {isSelected && selectedItems.length === 1 ? (
+                          <IconButton size="small" onClick={() => setSelectedItems([])}>
+                            <GpsFixedIcon fontSize="small" />
+                          </IconButton>
+                        ) : (
+                          <IconButton size="small" onClick={() => setSelectedItems([item])}>
+                            <LocationSearchingIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        <IconButton size="small" onClick={() => navigateToReplay(item)}>
+                          <RouteIcon fontSize="small" />
+                        </IconButton>
+                      </div>
+                    </TableCell>
+                    <TableCell>{devices[item.deviceId].name}</TableCell>
+                    {columns.map((key) => (
+                      <TableCell key={key}>{formatValue(item, key)}</TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

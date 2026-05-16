@@ -243,7 +243,19 @@ export const useLocalization = () => useContext(LocalizationContext);
 export const useTranslation = () => {
   const context = useContext(LocalizationContext);
   const { data } = context.languages[context.language];
-  return useMemo(() => (key) => data[key], [data]);
+  return useMemo(() => (key, params) => {
+    // Fall back to English when a key is missing from the active locale.
+    // Tracksweeper adds a small number of custom keys that aren't always
+    // translated into every language — without this fallback, those would
+    // render as the literal word "undefined".
+    let str = data[key] ?? en[key];
+    if (params && typeof str === 'string') {
+      Object.entries(params).forEach(([k, v]) => {
+        str = str.replace(`{${k}}`, v);
+      });
+    }
+    return str;
+  }, [data]);
 };
 
 export const useTranslationKeys = (predicate) => {

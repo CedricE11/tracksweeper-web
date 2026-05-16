@@ -56,7 +56,17 @@ const RegisterPage = () => {
     await fetchOrThrow('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, totpKey }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        totpKey,
+        // Tracksweeper default: only show Sweeps, Chart, and Replay in the
+        // reports menu for newly-created users. Keep this list in sync with
+        // UserPage.jsx so admin-created and self-registered users get the
+        // same defaults.
+        attributes: { visibleReports: 'trips,chart,replay' },
+      }),
     });
     setSnackbarOpen(true);
   });
