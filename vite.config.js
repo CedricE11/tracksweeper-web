@@ -24,6 +24,8 @@ export default defineConfig(() => ({
         navigateFallbackDenylist: [
           /^\/api/,
           /^\/view(\/|$)/,
+		  /^\/flash(\/|$)/,       // ADD — sidecar flash page
+		  /^\/sidecar(\/|$)/,     // ADD — sidecar API calls
           // Legacy bare-slug share URLs from before the /view/ prefix existed.
           // Keep these in the denylist so the service worker lets them through
           // to nginx, where they're redirected to /reports/trips/?token=...
