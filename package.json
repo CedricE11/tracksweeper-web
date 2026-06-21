@@ -1,6 +1,6 @@
 {
   "name": "traccar",
-  "version": "6.12.2-swp.1.0.0",
+  "version": "6.12.2-swp.1.0.1",
   "type": "module",
   "private": true,
   "dependencies": {

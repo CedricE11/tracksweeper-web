@@ -92,6 +92,11 @@ const TripReportPage = () => {
   const [shownRange, setShownRange] = useState(null);
   const hasAutoSubmitted = useRef(false);
   const lastShowParams = useRef(null);
+  // Monotonic id for route-fetch runs. If the selection changes (or onShow
+  // fires more than once during load) while routes are still loading, only the
+  // most recent run is allowed to write state; older runs bail out. Prevents a
+  // stale, partial result from overwriting a complete one.
+  const routeRequestId = useRef(0);
 
 
   // Device auto-select: when devices have loaded and there's no deviceId or
@@ -130,47 +135,78 @@ const TripReportPage = () => {
   // hundreds of trips finishes in seconds instead of minutes.
   useEffectAsync(async () => {
     const ROUTE_FETCH_BATCH_SIZE = 16;
+    const ROUTE_FETCH_ATTEMPTS = 3;
+    // Claim this run. Any run started later bumps the id and makes this one
+    // stale, at which point we stop fetching and skip the state write.
+    routeRequestId.current += 1;
+    const requestId = routeRequestId.current;
+    const isStale = () => routeRequestId.current !== requestId;
+
+    /* eslint-disable no-await-in-loop */
+    // Fetch one trip's route, retrying transient failures with a short backoff.
+    // Returns the position array on success (possibly empty for a trip with no
+    // points) or null if every attempt failed.
+    const fetchRoute = async ({ deviceId, startTime, endTime }) => {
+      const query = new URLSearchParams({ deviceId, from: startTime, to: endTime });
+      for (let attempt = 1; attempt <= ROUTE_FETCH_ATTEMPTS; attempt += 1) {
+        try {
+          const response = await fetchOrThrow(`/api/reports/route?${query.toString()}`, {
+            headers: { Accept: 'application/json' },
+          });
+          return await response.json();
+        } catch (error) {
+          if (attempt === ROUTE_FETCH_ATTEMPTS || isStale()) {
+            return null;
+          }
+          await new Promise((resolve) => {
+            setTimeout(resolve, 250 * attempt);
+          });
+        }
+      }
+      return null;
+    };
+
     const newRoutes = {};
     const toFetch = [];
     selectedItems.forEach((item) => {
       const routeKey = `${item.deviceId}-${item.startTime}-${item.endTime}`;
       if (routes[routeKey]) {
-        // Reuse cached route from a previous selection.
+        // Reuse a successfully cached route from a previous selection. Failed
+        // fetches are never cached, so they fall through to toFetch and get
+        // retried rather than staying permanently blank.
         newRoutes[routeKey] = routes[routeKey];
       } else {
         toFetch.push({ item, routeKey });
       }
     });
 
-    /* eslint-disable no-await-in-loop */
     for (let i = 0; i < toFetch.length; i += ROUTE_FETCH_BATCH_SIZE) {
+      // A newer selection has superseded this run: stop early so we neither
+      // waste requests nor overwrite fresher data.
+      if (isStale()) {
+        return undefined;
+      }
       const batch = toFetch.slice(i, i + ROUTE_FETCH_BATCH_SIZE);
       const results = await Promise.all(
-        batch.map(async ({ item, routeKey }) => {
-          const query = new URLSearchParams({
-            deviceId: item.deviceId,
-            from: item.startTime,
-            to: item.endTime,
-          });
-          try {
-            const response = await fetchOrThrow(`/api/reports/route?${query.toString()}`, {
-              headers: { Accept: 'application/json' },
-            });
-            return [routeKey, await response.json()];
-          } catch (error) {
-            // Swallow per-trip route failures so a single bad trip doesn't
-            // break the rest of the visualization.
-            return [routeKey, []];
-          }
-        }),
+        batch.map(async ({ item, routeKey }) => [routeKey, await fetchRoute(item)]),
       );
       results.forEach(([key, data]) => {
-        newRoutes[key] = data;
+        // Only cache real results. A null (all attempts failed) is left out so
+        // the trip is retried next time instead of being cached as blank --
+        // caching the failure is what made sweeps disappear until the user
+        // toggled the selection off and on.
+        if (data) {
+          newRoutes[key] = data;
+        }
       });
     }
     /* eslint-enable no-await-in-loop */
 
+    if (isStale()) {
+      return undefined;
+    }
     setRoutes(newRoutes);
+    return undefined;
   }, [selectedItems]);
 
   const onShow = useCatch(async ({ deviceIds, groupIds, from, to }) => {
