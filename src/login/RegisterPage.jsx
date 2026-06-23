@@ -61,11 +61,11 @@ const RegisterPage = () => {
         email,
         password,
         totpKey,
-        // Tracksweeper default: only show Sweeps, Chart, and Replay in the
+        // Tracksweeper default: only show Sweeps in the
         // reports menu for newly-created users. Keep this list in sync with
         // UserPage.jsx so admin-created and self-registered users get the
         // same defaults.
-        attributes: { visibleReports: 'trips,chart,replay' },
+        attributes: { visibleReports: 'trips' },
       }),
     });
     setSnackbarOpen(true);

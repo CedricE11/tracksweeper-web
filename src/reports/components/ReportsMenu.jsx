@@ -13,18 +13,10 @@ import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import NotesIcon from '@mui/icons-material/Notes';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import { useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAdministrator, useRestriction } from '../../common/util/permissions';
 import MenuItem from '../../common/components/MenuItem';
-
-// Stable identifiers persisted in user.attributes.visibleReports.
-// Must match the values offered in the PreferencesPage / UserPage settings.
-const ALL_REPORTS = [
-  'combined', 'events', 'geofences', 'trips', 'stops',
-  'summary', 'chart', 'replay', 'route',
-  'logs', 'scheduled', 'statistics',
-];
+import useVisibleReports from '../../common/util/useVisibleReports';
 
 const ReportsMenu = () => {
   const t = useTranslation();
@@ -33,13 +25,7 @@ const ReportsMenu = () => {
   const admin = useAdministrator();
   const readonly = useRestriction('readonly');
 
-  const user = useSelector((state) => state.session.user);
-  const raw = user?.attributes?.visibleReports;
-  const visibleReports = (() => {
-    if (raw === undefined || raw === null) return ALL_REPORTS;
-    if (raw === '' || raw === 'none') return [];
-    return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
-  })();
+  const visibleReports = useVisibleReports();
 
   // If the user has explicitly hidden every report, render nothing
   // (preserves the "deselect all" UX from the original sweeper customization).

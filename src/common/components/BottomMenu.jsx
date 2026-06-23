@@ -179,7 +179,7 @@ const BottomMenu = () => {
         />
         {!disableReports && (
           <BottomNavigationAction
-            label={t('reportTitle')}
+            label={t('reportTrips')}
             icon={<DescriptionIcon />}
             value="reports"
           />

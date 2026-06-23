@@ -14,9 +14,10 @@ import { makeStyles } from 'tss-react/mui';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from './LocalizationProvider';
 import BackIcon from './BackIcon';
+import useVisibleReports from '../util/useVisibleReports';
 
 const useStyles = makeStyles()((theme, { miniVariant }) => ({
   root: {
@@ -24,6 +25,23 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
     display: 'flex',
     [theme.breakpoints.down('md')]: {
       flexDirection: 'column',
+    },
+  },
+  menuHiddenRoot: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+  },
+  floatingBack: {
+    position: 'absolute',
+    top: theme.spacing(1),
+    left: theme.spacing(1),
+    zIndex: theme.zIndex.appBar,
+    backgroundColor: theme.palette.background.paper,
+    boxShadow: theme.shadows[3],
+    '&:hover': {
+      backgroundColor: theme.palette.background.paper,
     },
   },
   desktopDrawer: {
@@ -89,6 +107,8 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
   const { classes } = useStyles({ miniVariant });
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const visibleReports = useVisibleReports();
 
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
 
@@ -97,6 +117,26 @@ const PageLayout = ({ menu, breadcrumbs, children }) => {
   const [openDrawer, setOpenDrawer] = useState(!desktop && searchParams.has('menu'));
 
   const toggleDrawer = () => setMiniVariant(!miniVariant);
+
+  // On a reports page with at most one report type active there is nothing to
+  // choose from, so hide the sidebar entirely and surface a slim top bar that
+  // keeps the back arrow (to the main map/devices page) and the page title.
+  const hideMenu = location.pathname.startsWith('/reports') && visibleReports.length <= 1;
+
+  if (hideMenu) {
+    return (
+      <div className={classes.menuHiddenRoot}>
+        <IconButton
+          className={classes.floatingBack}
+          color="inherit"
+          onClick={() => navigate('/')}
+        >
+          <BackIcon />
+        </IconButton>
+        <div className={classes.content}>{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div className={classes.root}>
